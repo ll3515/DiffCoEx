@@ -12,8 +12,61 @@ options(stringsAsFactors=F)
 # ------------------------------------------------------------------------------------------------------------
 #  Preparing data:
 # ------------------------------------------------------------------------------------------------------------
-
 # Make sure there are no values with 0 sd
+
+sd.check<-function(dat_mat,check_rows=F,check_cols=T,verbose=T,help=F){
+if(help==T){
+  cat("\nUSE: check that values in rows/columns of matrix/dataframe vary: sd>0 or factors are informative: have >1 level / not ids n.levels=n.rows\n")
+}
+
+if(is.matrix(dat_mat)){dat_class=apply(dat_mat,2,class)}
+if(is.data.frame(dat_mat)){dat_class=unlist(lapply(dat_mat,class))}
+  cat("\n+++++++++++++++++ data qc check +++++++++++++++++\n")
+  cat("dat_mat contains",ncol(dat_mat),"variables, of which :\n")
+  print(table(dat_class))
+    dat_num=dat_mat[,dat_class==("numeric"),drop=F]
+    dat_fac=dat_mat[,dat_class=="factor",drop=F]
+    dat_otr=dat_mat[,!(dat_class%in%c("factor","numeric")),drop=F]
+
+rowind=1:nrow(dat_mat)
+colind=1:ncol(dat_mat)
+
+if(check_cols==T){
+  fac_col=apply(dat_fac,2,function(x) sum(table(x)!=0))
+  num_col=apply(dat_num,2,sd)
+
+  numvarcol=names(num_col)[num_col==0]
+    if(length(numvarcol)){cat("\tcol - values do not vary (sd=0) :\t",paste(numvarcol,collapse=", "),"\n")}
+  facvarcol=names(fac_col)[fac_col==1]
+    if(length(facvarcol)){cat("\tcol - contains single value :\t\t",paste(facvarcol,collapse=", "),"\n")}
+  facvaridc=names(fac_col)[fac_col==nrow(dat_fac)]
+    if(length(facvaridc)){cat("\tcol - as many levels as rows :\t\t",paste(facvaridc,collapse=", "),"\n")}
+    colind=!(colnames(dat_mat)%in% c(numvarcol,facvarcol,facvaridc))
+}
+
+if(check_rows==T){
+  fac_row=apply(dat_fac,1,function(x) sum(table(x)!=0))
+  num_row=apply(dat_num,1,sd)
+
+  numvarrow=names(num_row)[num_row==0]
+    if(length(numvarrow)){cat("\trow - values do not vary (sd=0) :\t",paste(numvarrow,collapse=", "),"\n")}
+  facvarrow=names(fac_row)[fac_row==1]
+    if(length(facvarrow)){cat("\trow - contains single value :\t\t",paste(facvarrow,collapse=", "),"\n")}
+  facvaridr=names(fac_row)[fac_row==nrow(dat_fac)]
+    if(length(facvaridr)){cat("\trow - as many levels as rows :\t\t",paste(facvaridr,collapse=", "),"\n")}
+  rowind=!(rownames(dat_mat)%in% c(numvarrow,facvarrow,facvaridr))
+}
+
+if(ncol(dat_otr)>0){
+    cat("\tcol - not factor nor numeric :\t",paste(names(dat_otr),collapse=", "),"\n")
+}
+  cat("\n")
+
+  return(invisible(dat_mat[rowind,colind]))
+}
+
+
+
 AA.expr.correct=sd.check(AA.expr.correct, check_rows = T)
 DA.expr.correct=sd.check(DA.expr.correct, check_rows = T)
 
@@ -167,6 +220,7 @@ diffcoex_paper <- function(beta2,bicorL,signtype=signType){
 } # for 2 conditions (condition-control)
 
 
+
 # ------------------------------------------------------------------------------------------------------------
 # Run DiffCoEx Function
 # ------------------------------------------------------------------------------------------------------------
@@ -219,6 +273,16 @@ dispersionModule2Module<-function(c1,c2,datC1,datC2,colorh1C1C2)
     (sum(difCor)/(n1*n2))^(0.5)
 
   }
+}
+
+
+mod.name.col <- function(module_ensg_list){
+  mcol=module_ensg_list$bkgrnd
+  for (i in 1:(length(module_ensg_list)-1)) {
+    mcol[mcol%in%module_ensg_list[[i]]]=names(module_ensg_list[i])
+
+  }
+  return(mcol)
 }
 
 
